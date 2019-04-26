@@ -1,0 +1,96 @@
+---
+title: "exercis3"
+author: "ajay parihar"
+date: "April 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+###EXERCISE 3
+Q>For this exercise, ﬁnd a recent and relevant time series to forecast, using the techniques that have been discussed during the lectures. In your analysis, set up a carefully selected forecasting process, taking data considerations and implementation issues into account. Describe your approach, and motivate your choices. The data set should be original (not from R packages), recent, suﬀciently long and must include a seasonal component. The data should be analyzed using at least two techniques, and results should be compared.
+
+A> In this exercise we are looking to predict amazon stock price based on historic data. The process covers the following steps:
+1)data import
+2)creating a time series
+3)train/test split
+4) jung box testing
+5)  arima and tbats functions
+
+
+
+```{r amazon stock forecasting }
+library(ggplot2)
+library(forecast)
+library(plotly)
+#library(ggfortify)
+library(tseries)
+library(gridExtra)
+#library(docstring)
+library(readr)
+#library(here)
+setwd("C:\\Users\\aparihar\\Downloads")
+amazon<-read_csv("HistoricalQuotes.csv")
+amazon[is.na(amazon)] <- 0
+amazon<-amazon[,-c(3:6)]
+amazon$close<-as.numeric(amazon$close)
+amazon$date<-as.Date(amazon$date,format="%m/%d/%Y")
+ggplot(amazon, aes(date, close)) + geom_line() +
+   xlab("test") + ylab("Price")
+amazon <- ts(amazon$close, start=c(2009, 5), freq=12)
+
+
+```
+
+
+Stationery testing
+
+```{r }
+amazon_train <- ts(amazon, start=c(2009, 5), end=c(2015, 5), freq=12)
+ Box.test(amazon, lag = 20, type = 'Ljung-Box')
+ adf.test(amazon)
+ 
+
+###Decomposition  
+decompose_amazon = decompose(amazon_train, "additive")
+ 
+plot(as.ts(decompose_amazon$seasonal))
+plot(as.ts(decompose_amazon$trend))
+plot(as.ts(decompose_amazon$random))
+plot(decompose_amazon)
+
+acf(amazon_train, 'Amazon')
+
+amz<-auto.arima(amazon_train)
+amz
+tsDiff <- diff(amazon_train)
+plot.ts(tsDiff)
+acf(tsDiff, 'S&P 500')
+
+amztff<-auto.arima(tsDiff)
+
+refitamz <- Arima(amazon_train, model=amz)
+ accuracy(refitamz)
+refittff <- Arima(tsDiff, model=amztff)
+ accuracy(refittff)
+####since RMSE is lower for amazon_train we will use auto arima amz 
+ 
+fit <- Arima(amazon_train, order = c(0,1,2), include.drift = TRUE) 
+summary(fit)
+
+for_amazon_all <- forecast(fit, h = 12)
+ plot(for_amazon_all)
+
+
+
+
+m_tbats = tbats(amazon_train)
+accuracy(m_tbats)
+f_tbats = forecast(m_tbats, h=24)
+plot(f_tbats)
+```
+

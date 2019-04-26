@@ -1,0 +1,249 @@
+---
+title: "exercise 2"
+author: "ajay parihar"
+date: "April 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+###Exercise 2
+
+The data set Houses shows the yearly number of family houses sold in Belgium
+(Houses) and the total price of transactions (Houseprices) from 1973 up to 2017.
+First, create the average house price by dividing the total price of transactions by
+the yearly number of family houses sold. This new variable will be analysed.
+Split the data in a training set up to 2010 and a test set from 2011 up to 2017.
+Use the training set for estimation of the methods/models, and use the test set for
+assessing the forecast accuracy.
+In each step of the exercise, discuss your results and explain your choices. Use
+additional tables and graphs wherever they clarify your answer.
+
+```{r }
+
+
+library(fpp2)
+library(readxl)
+library(portes)
+#install.packages("lmtest")
+library(lmtest)
+
+setwd("C:/Users/aparihar/Downloads")
+
+# read the data
+houses <- read_excel("DataSets.xlsx", sheet = "Houses")
+houses$averageprice<-houses$Houseprices/houses$Houses
+str(houses)
+###create time series
+rsvhouse <- ts(houses[,4], frequency = 1, start = 1973)
+rsv1house <- window(rsvhouse, end=2009)
+rsv2house <- window(rsvhouse, start=2010)
+h=length(rsv2house)
+h
+```
+##exercise2.1
+Explore the data using relevant graphs.
+
+here we plot the average price graph for the time period, we don't see any seasonality in the time series
+
+```{r }
+# Plot the data
+plot(rsvhouse)
+lines(rsv1house, col="red")
+lines(rsv2house, col="blue")
+
+
+```
+
+
+##Exercise2.2
+ Create forecasts using the most appropriate naive method. Check the residual
+diagnostics and the forecast accuracy.
+We run the naive method, a plot is created. Looking at the residuls we don't see any white noise
+
+```{r }
+##here we run naive method 
+f2 <- naive(rsv1house, h=h)
+accuracy(f2,rsv2house)
+
+##lets plot the grpah
+plot(rsvhouse,main="avg house price", ylab="",xlab="Day")
+lines(f2$mean,col=2)
+legend("bottomleft",lty=1,col=2,legend="Naive Method")
+#now we check residuals
+checkresiduals(f2)
+
+
+
+
+```
+
+## Exercise 2.3
+Q)Generate forecasts using the relevant exponential smoothing methods. Check
+the residual diagnostics and the forecast accuracy
+A) h2 damped is the best 
+
+```{r }
+h1 <- holt(rsv1house, h=100)
+
+h2 <- holt(rsv1house, h=100, damped=TRUE)
+
+h3 <- holt(rsv1house, h=100, exponential=TRUE, damped=TRUE)
+
+plot(h1, type="l", ylab="Average House Prices",
+
+xlab="Year", fcol="white", shadecols="white")
+lines(fitted(h1), col=2)
+
+lines(fitted(h2), col=3)
+
+lines(fitted(h3), col=4)
+
+
+
+lines(h1$mean, col=2, type="l")
+
+lines(h2$mean, col=3, type="l")
+
+lines(h3$mean, col=5, type="l")
+
+legend("bottomleft", lty=1, col=c(2,3,4,5),c("Holt's Linear", "Additive Damped", "Multiplicative Damped"), cex=0.75)
+
+accuracy(h1, rsv2house)[,c(2,3,5,6)]
+accuracy(h2,rsv2house)[,c(2,3,5,6)]
+accuracy(h3, rsv2house)[,c(2,3,5,6)]
+res <- residuals(h2)
+
+checkresiduals(res)
+
+
+
+```
+
+
+## Exercise 2.4
+Generate forecasts using ETS. First select the appropriate model(s) yourself
+and discuss their performance. Compare these models with the results of the
+automated ETS procedure. Check the residual diagnostics and the forecast
+accuracy for the various ETS models you’ve considered
+
+A)Since the data is non seasonal we will use the below model, f1 and f6 are the best model
+
+```{r }
+
+e1 <- ets(rsv1house,"AAN")
+e2 <- ets(rsv1house,"MNN")
+e3 <- ets(rsv1house,"ANN")
+e4 <- ets(rsv1house,"MAN")
+e5 <- ets(rsv1house,"MMN")
+e6 <- ets(rsv1house, model = "AAN", damped = TRUE)
+e7 <- ets(rsv1house, model = "MAN", damped = TRUE)
+e8 <- ets(rsv1house, model = "MMN", damped = TRUE)
+auto_ets = ets(rsv1house)
+
+auto_ets = ets(rsv1house)
+f1 = forecast(e1,h=h)
+f2 = forecast(e2,h=h)
+f3 = forecast(e3,h=h)
+f4 = forecast(e4,h=h)
+f5 = forecast(e5,h=h)
+f6 = forecast(e6,h=h)
+f7 = forecast(e7,h=h)
+f8 = forecast(e8,h=h)
+
+accuracy(f1,rsv2house)[,c(2,3,5,6)]
+accuracy(f2,rsv2house)[,c(2,3,5,6)]
+accuracy(f3,rsv2house)[,c(2,3,5,6)]
+accuracy(f4,rsv2house)[,c(2,3,5,6)]
+accuracy(f5,rsv2house)[,c(2,3,5,6)]
+accuracy(f6,rsv2house)[,c(2,3,5,6)]
+accuracy(f7,rsv2house)[,c(2,3,5,6)]
+accuracy(f8,rsv2house)[,c(2,3,5,6)]
+
+```
+
+
+
+
+
+## Exercise 2.5
+Generate forecasts using ARIMA. First select the appropriate model(s) yourself
+and discuss their performance. Compare these models with the results of the
+auto.arima procedure. Check the residual diagnostics and the forecast accuracy
+for the various ARIMA models you’ve considered.
+
+```{r }
+auto_arima <-auto.arima(rsv1house, seasonal=FALSE, allowdrift = TRUE)
+summary(auto_arima)
+f1<-forecast(auto_arima,h=h)
+accuracy(f1,rsv2house)[,c(2,3,5,6)]
+checkresiduals(auto_arima)
+
+best_model <- Arima(rsv1house, order=c(0,2,1))
+checkresiduals(best_model)
+f2<-forecast(best_model,h=h)
+accuracy(f2,rsv2house)[,c(2,3,5,6)]
+checkresiduals(best_model)
+
+
+main_dataset = Arima(rsvhouse, order = c(0,2,1))
+
+for_main = forecast(main_dataset,h=3)
+ plot(for_main)
+```
+
+## Exercise 2.6
+Compare the different models in terms of residual diagnostics, model fit, and
+forecast accuracy. Analyse your results and select your final model.
+
+Answer:
+
+best model based on partition was Exponential followed by Arima
+
+Arima
+
+                  RMSE       MAE     MAPE      MASE
+Training set  4994.146  2377.229 3.130373 0.5171411
+Test set     13871.456 13120.899 6.468137 2.8543134
+
+ETS
+                  RMSE       MAE      MAPE      MASE
+Training set  5086.783  2444.953  3.346675 0.5318738
+Test set     26642.894 24613.080 12.076095 5.3543163 
+
+Exponential
+                 RMSE       MAE     MAPE      MASE
+Training set  5003.296  2442.777 3.581799 0.5314005
+Test set     12687.380 12043.597 5.942417 2.6199576    -best
+
+Naive
+                   ME      RMSE       MAE       MPE     MAPE     MASE      ACF1 Theil's U
+Training set  4382.756  7267.137  4596.867  6.454523  7.04680 1.000000 0.5758397        NA
+Test set     27326.193 29673.556 27326.193 13.400057 13.40006 5.944525 0.5619291  5.365213
+
+
+
+## Exercise 2.7
+Finally, generate out of sample forecasts up to 2020, based on the complete time
+series. Discuss your results
+
+```{r }
+
+
+plot(forecast(h1, h=10), include = 80)
+```
+
+
+
+
+
+
+
+
+
+
+
+
